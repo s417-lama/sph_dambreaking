@@ -26,7 +26,7 @@ inline calc_kernel_t get_calc_kernel(calc_type type) {
   calc_kernel_t h_func;
   switch (type) {
     case CALC_TYPE_DENS:
-      cudaMemcpyFromSymbol(&h_func, calc_hydro_kernel, sizeof(calc_kernel_t));
+      cudaMemcpyFromSymbol(&h_func, calc_dens_kernel, sizeof(calc_kernel_t));
       break;
     case CALC_TYPE_HYDRO:
       cudaMemcpyFromSymbol(&h_func, calc_hydro_kernel, sizeof(calc_kernel_t));

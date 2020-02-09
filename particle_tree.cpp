@@ -105,6 +105,7 @@ void refine_bbox(ParticleTreeNode* node) {
 void search_neighbors_impl(ParticleTreeNode* node, ParticleTreeNode* target) {
   if (node->is_leaf) {
     target->neighbors.push_back(node);
+    target->n_neighbors += node->n_particles;
   } else {
     for (int i = 0; i < (1 << DIM); i++) {
       if (ParticleTreeNode* child = node->children[i]) {
@@ -119,6 +120,7 @@ void search_neighbors_impl(ParticleTreeNode* node, ParticleTreeNode* target) {
 void search_neighbors(ParticleTreeNode* root) {
   pfor_leaf_impl(root, [&] (ParticleTreeNode* leaf) {
     leaf->neighbors.clear();
+    leaf->n_neighbors = 0;
     search_neighbors_impl(root, leaf);
   });
 }
@@ -144,11 +146,13 @@ ParticleTree::ParticleTree(const std::vector<Particle>& particles) {
     particles_i_[i] = particles[i];
   }
   root_ = NULL;
-  j_outdated = true;
 }
 
 ParticleTree::~ParticleTree() {
   delete_nodes(root_);
+#if SPH_CUDA_PARALLEL
+  destroy_global_array();
+#endif
   delete[] particles_i_;
   delete[] particles_j_;
 }
@@ -156,10 +160,53 @@ ParticleTree::~ParticleTree() {
 void ParticleTree::build() {
   if (root_) {
     delete_nodes(root_);
+#if SPH_CUDA_PARALLEL
+    destroy_global_array();
+#endif
   }
   BoundingBox bbox = get_bbox(particles_i_, n_particles_);
   root_ = build_tree(particles_i_, particles_j_, n_particles_, bbox, false);
   refine_bbox(root_);
   search_neighbors(root_);
-  j_outdated = false;
+#if SPH_CUDA_PARALLEL
+  setup_global_array();
+#endif
 }
+
+#if SPH_CUDA_PARALLEL
+void ParticleTree::setup_global_array() {
+  int idx = 0;
+  int acc_neighbors = 0;
+
+  for_leaf_impl(root_, [&] (ParticleTreeNode* leaf) {
+    leaf->index = idx++;
+    acc_neighbors += leaf->n_neighbors;
+  });
+
+  n_leafs_ = idx;
+  pi_offsets_ = new int[n_leafs_ + 1];
+  pj_offsets_ = new int[n_leafs_ + 1];
+
+  pj_buf_size_ = acc_neighbors;
+  pj_buf_ = new Particle[pj_buf_size_];
+
+  int pi_acc = 0;
+  int pj_acc = 0;
+  // scan (prefix sum)
+  pi_offsets_[0] = 0;
+  pj_offsets_[0] = 0;
+  for_leaf_impl(root_, [&] (ParticleTreeNode* leaf) {
+    int idx = leaf->index;
+    pi_acc += leaf->n_particles;
+    pi_offsets_[idx + 1] = pi_acc;
+    pj_acc += leaf->n_neighbors;
+    pj_offsets_[idx + 1] = pj_acc;
+  });
+}
+
+void ParticleTree::destroy_global_array() {
+  delete[] pi_offsets_;
+  delete[] pj_offsets_;
+  delete[] pj_buf_;
+}
+#endif
