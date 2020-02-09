@@ -55,9 +55,9 @@ ParticleTreeNode* build_tree(Particle *particles1, Particle* particles2,
   // create a node
   ParticleTreeNode* node;
   if (flip) {
-    node = new ParticleTreeNode(particles2, particles1, n);
+    node = new ParticleTreeNode(particles2, particles1, n, bbox);
   } else {
-    node = new ParticleTreeNode(particles1, particles2, n);
+    node = new ParticleTreeNode(particles1, particles2, n, bbox);
   }
 
   if (n <= SPH_PARTICLES_CUTOFF) {
@@ -89,13 +89,13 @@ ParticleTreeNode* build_tree(Particle *particles1, Particle* particles2,
 void refine_bbox(ParticleTreeNode* node) {
   if (node->is_leaf) {
     BoundingBox bbox = get_bbox(node->particles_i, node->n_particles);
-    node->bbox       = bbox;
+    node->inner_bbox = bbox;
     node->outer_bbox = bbox.expand(SLEN + SKIN);
   } else {
     for (int i = 0; i < (1 << DIM); i++) {
       if (ParticleTreeNode* child = node->children[i]) {
         refine_bbox(child);
-        node->bbox.merge(child->bbox);
+        node->inner_bbox.merge(child->inner_bbox);
         node->outer_bbox.merge(child->outer_bbox);
       }
     }
@@ -109,7 +109,7 @@ void search_neighbors_impl(ParticleTreeNode* node, ParticleTreeNode* target) {
   } else {
     for (int i = 0; i < (1 << DIM); i++) {
       if (ParticleTreeNode* child = node->children[i]) {
-        if (target->outer_bbox.intersect(child->bbox)) {
+        if (target->outer_bbox.intersect(child->inner_bbox)) {
           search_neighbors_impl(child, target);
         }
       }

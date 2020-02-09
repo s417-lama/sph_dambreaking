@@ -32,6 +32,10 @@
 # define SPH_PARTICLES_CUTOFF 64
 #endif
 
+#ifndef SPH_RECORD_CPU
+# define SPH_RECORD_CPU 0
+#endif
+
 #ifdef SPH_CUDA_PARALLEL
 # define SPH_KERNEL __host__ __device__
 #else

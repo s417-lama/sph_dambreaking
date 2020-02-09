@@ -66,4 +66,10 @@ class BoundingBox2 {
       T y = py ? max.y : min.y;
       return BoundingBox2(Vector2<T>(x, y), center());
     }
+
+    // stream
+    friend std::ostream& operator << (std::ostream& c, const BoundingBox2& bbox) {
+      c << bbox.min << " " << bbox.max;
+      return c;
+    }
 };

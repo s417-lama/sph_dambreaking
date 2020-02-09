@@ -176,24 +176,19 @@ int main(int argc, char* argv[]) {
 #if SPH_OUTPUT_INTERVAL
     if (step % SPH_OUTPUT_INTERVAL == 0) {
       char filename[256];
-#if SPH_2D
-      sprintf(filename, "result/dambreaking2d.txt.%d", step / SPH_OUTPUT_INTERVAL);
-#else
-      sprintf(filename, "result/dambreaking3d.txt.%d", step / SPH_OUTPUT_INTERVAL);
-#endif
+      sprintf(filename, "result/dambreaking%dd.txt.%d", DIM, step / SPH_OUTPUT_INTERVAL);
       output_particles(ptree, filename);
 
       std::cout << "================================" << std::endl;
       std::cout << "output " << filename << "." << std::endl;
       std::cout << "================================" << std::endl;
-#ifdef RECORD_SPLIT
+
       {
-        sprintf(filename, "result/split.txt.%d", step / SPH_OUTPUT_INTERVAL);
+        sprintf(filename, "result/particle_tree%dd.txt.%d", DIM, step / SPH_OUTPUT_INTERVAL);
         std::ofstream fout(filename);
-        hydr_tree.dumpSplit(fout);
+        fout << ptree;
         fout.close();
       }
-#endif
 #ifdef RECORD_TIMELINE
       {
         sprintf(filename, "result/timeline.txt.%d", step / SPH_OUTPUT_INTERVAL);

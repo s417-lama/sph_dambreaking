@@ -11,6 +11,7 @@ typedef struct ParticleTreeNode {
   int                                   n_particles;
   bool                                  is_leaf;
   BoundingBox                           bbox;
+  BoundingBox                           inner_bbox;
   BoundingBox                           outer_bbox;
   struct ParticleTreeNode*              children[(1 << DIM)];
   std::vector<struct ParticleTreeNode*> neighbors;
@@ -18,9 +19,12 @@ typedef struct ParticleTreeNode {
 #if SPH_CUDA_PARALLEL
   int                                   index;
 #endif
+#if SPH_RECORD_CPU
+  int                                   cpu;
+#endif
 
-  ParticleTreeNode(Particle* ps_i, Particle* ps_j, const int n)
-    : particles_i(ps_i), particles_j(ps_j), n_particles(n), is_leaf(false) {}
+  ParticleTreeNode(Particle* ps_i, Particle* ps_j, const int n, BoundingBox bb)
+    : particles_i(ps_i), particles_j(ps_j), n_particles(n), is_leaf(false), bbox(bb) {}
 } ParticleTreeNode;
 
 template <typename Func>
@@ -144,6 +148,9 @@ class ParticleTree {
       cudaCheckError(cudaFree(d_pj_offsets));
 #else
       pfor_leaf_impl(root_, [&] (ParticleTreeNode* leaf) {
+#if SPH_RECORD_CPU
+        leaf->cpu = sched_getcpu();
+#endif
         int nj = leaf->n_neighbors;
         Particle* ps_j = new Particle[nj];
         int c = 0;
@@ -188,4 +195,15 @@ class ParticleTree {
     void setup_global_array();
     void destroy_global_array();
 #endif
+
+    friend std::ostream& operator << (std::ostream& c, const ParticleTree& tree) {
+      for_leaf_impl(tree.root_, [&] (ParticleTreeNode* leaf) {
+#if SPH_RECORD_CPU
+        c << leaf->cpu << " " << leaf->bbox << " " << leaf->n_particles << std::endl;
+#else
+        c << "-1 " << leaf->bbox << " " << leaf->n_particles << std::endl;
+#endif
+      });
+      return c;
+    }
 };
