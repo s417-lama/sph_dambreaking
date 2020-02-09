@@ -7,7 +7,7 @@ endif
 CFLAGS  := -std=c++11 -march=native -O3 -g $(CFLAGS)
 LDFLAGS := -lm
 
-# CFLAGS += -O0 -g
+CFLAGS += -O0 -g
 
 # MassiveThreads
 ifdef SPH_TASK_PARALLEL
