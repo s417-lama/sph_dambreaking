@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
-scale = 1
+import sys
+
+scale = int(sys.argv[1]) if len(sys.argv) > 1 else 1
 
 l0      = 0.55 / 30.0 / scale
 n_wall  = 2

@@ -3,7 +3,7 @@ MYTH_PATH = $(HOME)/opt/massivethreads
 ifdef SPH_CUDA_PARALLEL
 # =========== GPU ===========
 CC      := nvcc
-CFLAGS  := -std=c++11 -O3 -g -arch=sm_61 -DSPH_CUDA_PARALLEL $(CFLAGS)
+CFLAGS  := -std=c++11 -O3 -g -arch=sm_60 -DSPH_CUDA_PARALLEL $(CFLAGS)
 LDFLAGS :=
 else
 # =========== CPU ===========
