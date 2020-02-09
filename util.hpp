@@ -2,6 +2,8 @@
 
 #include <ctime>
 
+#include "config.hpp"
+
 inline uint64_t gettime_in_nsec() {
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);
@@ -27,11 +29,13 @@ inline void parallel_for(int begin, int end, const Func body) {
 }
 
 template <typename T>
+SPH_KERNEL
 inline const T& max_(const T& a, const T& b) {
   return (a > b) ? a : b;
 }
 
 template <typename T>
+SPH_KERNEL
 inline const T& min_(const T& a, const T& b) {
   return (b < a) ? b : a;
 }

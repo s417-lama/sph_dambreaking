@@ -2,6 +2,7 @@
 
 #include <vector>
 
+#include "config.hpp"
 #include "defs.hpp"
 
 typedef struct ParticleTreeNode {
@@ -30,6 +31,22 @@ inline void pfor_leaf_impl(ParticleTreeNode* node, const Func body) {
     }
   }
 }
+
+#if SPH_CUDA_PARALLEL
+#define cudaCheckError(ans) { cudaAssert((ans), __FILE__, __LINE__); }
+inline void cudaAssert(cudaError_t code, const char *file, int line) {
+   if (code != cudaSuccess) {
+      fprintf(stderr,"GPUassert: %s %s %d\n", cudaGetErrorString(code), file, line);
+      if (abort) exit(code);
+   }
+}
+
+template <typename Func>
+__global__
+static void on_gpu(Particle *ps_i, int ni, Particle *ps_j, int nj, Func body) {
+  body(ps_i, ni, ps_j, nj);
+}
+#endif
 
 class ParticleTree {
   private:
@@ -68,8 +85,29 @@ class ParticleTree {
             ps_j[c++] = nb->particles_j[j];
           }
         }
-        body(leaf->particles_i, leaf->n_particles,
-             ps_j, nj);
+        Particle* ps_i = leaf->particles_i;
+        int ni = leaf->n_particles;
+#if SPH_CUDA_PARALLEL
+        Particle* d_ps_i;
+        Particle* d_ps_j;
+
+        cudaCheckError(cudaMalloc(&d_ps_i, sizeof(Particle) * ni));
+        cudaCheckError(cudaMalloc(&d_ps_j, sizeof(Particle) * nj));
+
+        cudaCheckError(cudaMemcpy(d_ps_i, ps_i, sizeof(Particle) * ni, cudaMemcpyHostToDevice));
+        cudaCheckError(cudaMemcpy(d_ps_j, ps_j, sizeof(Particle) * nj, cudaMemcpyHostToDevice));
+
+        on_gpu<Func><<<1, 1>>>(d_ps_i, leaf->n_particles, d_ps_j, nj, body);
+        cudaCheckError(cudaPeekAtLastError());
+        cudaCheckError(cudaDeviceSynchronize());
+
+        cudaCheckError(cudaMemcpy(ps_i, d_ps_i, sizeof(Particle) * ni, cudaMemcpyDeviceToHost));
+
+        cudaCheckError(cudaFree(d_ps_i));
+        cudaCheckError(cudaFree(d_ps_j));
+#else
+        body(ps_i, ni, ps_j, nj);
+#endif
         delete[] ps_j;
       });
       j_outdated = true;

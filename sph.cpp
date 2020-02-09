@@ -4,6 +4,7 @@
 #include <fstream>
 #include <vector>
 
+#include "config.hpp"
 #include "util.hpp"
 #include "defs.hpp"
 #include "particle_tree.hpp"
@@ -126,6 +127,9 @@ int main(int argc, char* argv[]) {
   int reuse_count = 0;
 #endif
 
+  calc_kernel_t dens_kernel  = get_calc_kernel(CALC_TYPE_DENS);
+  calc_kernel_t hydro_kernel = get_calc_kernel(CALC_TYPE_HYDRO);
+
   // Main loop for time integration
   double dt = 0;
   int step = 0;
@@ -154,8 +158,8 @@ int main(int argc, char* argv[]) {
 #endif
 
     // particle interactions
-    ptree.calc(calc_dens);
-    ptree.calc(calc_hydro);
+    ptree.calc(dens_kernel);
+    ptree.calc(hydro_kernel);
 
     if (step > 0) {
       // Leap frog: Final Kick

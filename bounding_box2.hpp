@@ -2,6 +2,7 @@
 
 #include <limits>
 
+#include "config.hpp"
 #include "util.hpp"
 #include "vector2.hpp"
 
