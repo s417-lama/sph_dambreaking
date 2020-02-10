@@ -16,7 +16,7 @@ typedef struct ParticleTreeNode {
   struct ParticleTreeNode*              children[(1 << DIM)];
   std::vector<struct ParticleTreeNode*> neighbors;
   int                                   n_neighbors;
-#if SPH_CUDA_PARALLEL
+#if SPH_LOOP_PARALLEL || SPH_CUDA_PARALLEL
   int                                   index;
 #endif
 #if SPH_RECORD_CPU
@@ -89,16 +89,17 @@ static void on_gpu(Particle* ps_i, Particle* ps_j, int np,
 
 class ParticleTree {
   private:
-    int               n_particles_;
-    Particle*         particles_i_;
-    Particle*         particles_j_;
-    ParticleTreeNode* root_;
-#if SPH_CUDA_PARALLEL
-    int               n_leafs_;
-    int*              pi_offsets_;
-    int*              pj_offsets_;
-    int               pj_buf_size_;
-    Particle*         pj_buf_;
+    int                n_particles_;
+    Particle*          particles_i_;
+    Particle*          particles_j_;
+    ParticleTreeNode*  root_;
+#if SPH_LOOP_PARALLEL || SPH_CUDA_PARALLEL
+    int                n_leafs_;
+    int*               pi_offsets_;
+    int*               pj_offsets_;
+    int                pj_buf_size_;
+    Particle*          pj_buf_;
+    ParticleTreeNode** leaf_array_;
 #endif
 
   public:
@@ -109,7 +110,27 @@ class ParticleTree {
 
     template <typename Func>
     void calc(const Func body) {
-#if SPH_CUDA_PARALLEL
+#if SPH_LOOP_PARALLEL
+#pragma omp parallel for
+      for (int idx = 0; idx < n_leafs_; idx++) {
+        ParticleTreeNode* leaf = leaf_array_[idx];
+#if SPH_RECORD_CPU
+        leaf->cpu = sched_getcpu();
+#endif
+        Particle* ps_i = leaf->particles_i;
+        Particle* ps_j = &pj_buf_[pj_offsets_[idx]];
+        int c = 0;
+        for (const auto& nb : leaf->neighbors) {
+          for (int j = 0; j < nb->n_particles; j++) {
+            ps_j[c++] = nb->particles_i[j];
+          }
+        }
+
+        int ni = leaf->n_particles;
+        int nj = leaf->n_neighbors;
+        body(ps_i, ni, ps_j, nj);
+      }
+#elif SPH_CUDA_PARALLEL
       pfor_leaf_impl(root_, [&] (ParticleTreeNode* leaf) {
         int idx = leaf->index;
         Particle* ps_j = &pj_buf_[pj_offsets_[idx]];
@@ -191,7 +212,7 @@ class ParticleTree {
       for_leaf_impl(root_, body);
     }
 
-#if SPH_CUDA_PARALLEL
+#if SPH_LOOP_PARALLEL || SPH_CUDA_PARALLEL
     void setup_global_array();
     void destroy_global_array();
 #endif

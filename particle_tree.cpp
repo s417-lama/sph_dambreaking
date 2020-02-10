@@ -150,7 +150,7 @@ ParticleTree::ParticleTree(const std::vector<Particle>& particles) {
 
 ParticleTree::~ParticleTree() {
   delete_nodes(root_);
-#if SPH_CUDA_PARALLEL
+#if SPH_LOOP_PARALLEL || SPH_CUDA_PARALLEL
   destroy_global_array();
 #endif
   delete[] particles_i_;
@@ -160,7 +160,7 @@ ParticleTree::~ParticleTree() {
 void ParticleTree::build() {
   if (root_) {
     delete_nodes(root_);
-#if SPH_CUDA_PARALLEL
+#if SPH_LOOP_PARALLEL || SPH_CUDA_PARALLEL
     destroy_global_array();
 #endif
   }
@@ -168,12 +168,12 @@ void ParticleTree::build() {
   root_ = build_tree(particles_i_, particles_j_, n_particles_, bbox, false);
   refine_bbox(root_);
   search_neighbors(root_);
-#if SPH_CUDA_PARALLEL
+#if SPH_LOOP_PARALLEL || SPH_CUDA_PARALLEL
   setup_global_array();
 #endif
 }
 
-#if SPH_CUDA_PARALLEL
+#if SPH_LOOP_PARALLEL || SPH_CUDA_PARALLEL
 void ParticleTree::setup_global_array() {
   int idx = 0;
   int acc_neighbors = 0;
@@ -186,6 +186,7 @@ void ParticleTree::setup_global_array() {
   n_leafs_ = idx;
   pi_offsets_ = new int[n_leafs_ + 1];
   pj_offsets_ = new int[n_leafs_ + 1];
+  leaf_array_ = new ParticleTreeNode*[n_leafs_];
 
   pj_buf_size_ = acc_neighbors;
   pj_buf_ = new Particle[pj_buf_size_];
@@ -201,6 +202,8 @@ void ParticleTree::setup_global_array() {
     pi_offsets_[idx + 1] = pi_acc;
     pj_acc += leaf->n_neighbors;
     pj_offsets_[idx + 1] = pj_acc;
+
+    leaf_array_[idx] = leaf;
   });
 }
 
@@ -208,5 +211,6 @@ void ParticleTree::destroy_global_array() {
   delete[] pi_offsets_;
   delete[] pj_offsets_;
   delete[] pj_buf_;
+  delete[] leaf_array_;
 }
 #endif

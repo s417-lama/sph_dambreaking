@@ -36,7 +36,15 @@
 # define SPH_RECORD_CPU 0
 #endif
 
-#ifdef SPH_CUDA_PARALLEL
+#ifndef SPH_LOOP_PARALLEL
+# define SPH_LOOP_PARALLEL 0
+#endif
+
+#ifndef SPH_CUDA_PARALLEL
+# define SPH_CUDA_PARALLEL 0
+#endif
+
+#if SPH_CUDA_PARALLEL
 # define SPH_KERNEL __host__ __device__
 #else
 # define SPH_KERNEL

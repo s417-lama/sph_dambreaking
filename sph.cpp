@@ -134,6 +134,7 @@ int main(int argc, char* argv[]) {
   double dt = 0;
   int step = 0;
   uint64_t t_all = 0;
+  uint64_t calc_t_all = 0;
   for (double time = 0; time < END_TIME && step < SPH_MAX_STEP; time += dt, step++) {
     uint64_t t1 = gettime_in_nsec();
 
@@ -157,9 +158,12 @@ int main(int argc, char* argv[]) {
     ptree.build();
 #endif
 
+    uint64_t c_t1 = gettime_in_nsec();
     // particle interactions
     ptree.calc(dens_kernel);
     ptree.calc(hydro_kernel);
+    uint64_t c_t2 = gettime_in_nsec();
+    calc_t_all += c_t2 - c_t1;
 
     if (step > 0) {
       // Leap frog: Final Kick
@@ -209,6 +213,7 @@ int main(int argc, char* argv[]) {
               << std::endl;
   }
 
+  std::cout << "total calc time = " << (double)calc_t_all / 1000000000 << " sec" << std::endl;
 #if SPH_REUSE_TREE
   std::cout << "reuse = " << reuse_count << std::endl;
   std::cout << "total time = " << (double)t_all / 1000000000 << " sec" << std::endl;

@@ -1,6 +1,6 @@
 #include "kernel.hpp"
 
-#ifdef SPH_CUDA_PARALLEL
+#if SPH_CUDA_PARALLEL
 __device__ calc_kernel_t calc_dens_kernel  = calc_dens;
 __device__ calc_kernel_t calc_hydro_kernel = calc_hydro;
 #endif

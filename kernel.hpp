@@ -18,7 +18,7 @@ inline real calc_pressure(const real dens) {
   return max_(0.0, C_B * (pow(dens / DENS0, 7) - 1));
 }
 
-#ifdef SPH_CUDA_PARALLEL
+#if SPH_CUDA_PARALLEL
 extern __device__ calc_kernel_t calc_dens_kernel;
 extern __device__ calc_kernel_t calc_hydro_kernel;
 
