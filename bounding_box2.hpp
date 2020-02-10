@@ -59,6 +59,17 @@ class BoundingBox2 {
           && (bbox.min.y <= max.y) && (min.y <= bbox.max.y);
     }
 
+    const BoundingBox2& square() {
+      T dx = max.x - min.x;
+      T dy = max.y - min.y;
+      T len = max_(dx, dy);
+      max.x += (len - dx) * T(0.5);
+      min.x -= (len - dx) * T(0.5);
+      max.y += (len - dy) * T(0.5);
+      min.y -= (len - dy) * T(0.5);
+      return (*this);
+    }
+
     inline BoundingBox2 orthant(const int i) const {
       int px = i & 1;
       int py = (i & (1 << 1)) >> 1;

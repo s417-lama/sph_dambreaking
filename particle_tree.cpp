@@ -164,7 +164,7 @@ void ParticleTree::build() {
     destroy_global_array();
 #endif
   }
-  BoundingBox bbox = get_bbox(particles_i_, n_particles_);
+  BoundingBox bbox = get_bbox(particles_i_, n_particles_).square();
   root_ = build_tree(particles_i_, particles_j_, n_particles_, bbox, false);
   refine_bbox(root_);
   search_neighbors(root_);
